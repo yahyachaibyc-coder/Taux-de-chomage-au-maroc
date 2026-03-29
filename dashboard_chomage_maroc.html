@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Taux de Chômage au Maroc</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --primary: #006633;
+      --primary-dark: #004d26;
+      --primary-light: #e8f5ee;
+      --secondary: #D4A017;
+      --secondary-light: #fdf3d7;
+      --bg: #f0f4f1;
+      --card-bg: #ffffff;
+      --text: #1a2e22;
+      --text-light: #5a7a65;
+      --border: #d0e4d8;
+      --shadow: 0 2px 16px rgba(0,102,51,0.09);
+      --radius: 12px;
+      --danger: #e53e3e;
+      --warning: #d69e2e;
+      --success: #38a169;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ─── HEADER ─── */
+    header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: #fff;
+      padding: 28px 32px 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .header-logo {
+      width: 56px; height: 56px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; flex-shrink: 0;
+    }
+    .header-text { flex: 1; }
+    .header-text h1 {
+      font-size: 1.55rem; font-weight: 700; letter-spacing: -0.3px;
+    }
+    .header-text p {
+      font-size: 0.88rem; opacity: 0.82; margin-top: 3px;
+    }
+    .header-badge {
+      background: var(--secondary);
+      color: #3d2a00;
+      font-weight: 700;
+      font-size: 0.78rem;
+      padding: 6px 14px;
+      border-radius: 20px;
+      letter-spacing: 0.4px;
+    }
+    .header-date {
+      font-size: 0.78rem;
+      opacity: 0.7;
+      margin-top: 2px;
+    }
+
+    /* ─── TABS ─── */
+    .tabs {
+      background: var(--primary-dark);
+      display: flex; gap: 2px;
+      padding: 0 32px;
+      overflow-x: auto;
+    }
+    .tab {
+      background: transparent;
+      border: none;
+      color: rgba(255,255,255,0.65);
+      padding: 12px 18px;
+      font-size: 0.84rem;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .tab:hover { color: #fff; background: rgba(255,255,255,0.07); }
+    .tab.active { color: var(--secondary); border-bottom-color: var(--secondary); background: rgba(212,160,23,0.1); }
+
+    /* ─── MAIN CONTENT ─── */
+    main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ─── KPI CARDS ─── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .kpi-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 20px 18px;
+      box-shadow: var(--shadow);
+      border-left: 4px solid var(--primary);
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::after {
+      content: '';
+      position: absolute; top: -30px; right: -20px;
+      width: 90px; height: 90px;
+      background: var(--primary-light);
+      border-radius: 50%;
+      opacity: 0.5;
+    }
+    .kpi-card.gold { border-left-color: var(--secondary); }
+    .kpi-card.gold::after { background: var(--secondary-light); }
+    .kpi-card.red { border-left-color: var(--danger); }
+    .kpi-card.red::after { background: #fff5f5; }
+    .kpi-label {
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-light);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .kpi-value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1;
+    }
+    .kpi-value span { font-size: 1rem; font-weight: 500; color: var(--text-light); }
+    .kpi-sub {
+      font-size: 0.76rem;
+      margin-top: 8px;
+      color: var(--text-light);
+    }
+    .kpi-sub.up { color: var(--danger); }
+    .kpi-sub.down { color: var(--success); }
+    .kpi-icon {
+      position: absolute; top: 16px; right: 16px;
+      font-size: 1.5rem; opacity: 0.3; z-index: 1;
+    }
+
+    /* ─── CHARTS GRID ─── */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+    .chart-wide { grid-column: 1 / -1; }
+    .chart-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px;
+    }
+    .chart-card h3 {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .chart-card p {
+      font-size: 0.75rem;
+      color: var(--text-light);
+      margin-bottom: 16px;
+    }
+    .chart-wrapper {
+      position: relative;
+      height: 250px;
+    }
+    .chart-wrapper-tall {
+      position: relative;
+      height: 300px;
+    }
+
+    /* ─── TABLE ─── */
+    .table-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px;
+      margin-bottom: 28px;
+    }
+    .table-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+    }
+    .table-header h3 { font-size: 0.92rem; font-weight: 700; }
+    .table-controls { display: flex; gap: 10px; align-items: center; }
+    .table-controls input {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.82rem;
+      color: var(--text);
+      outline: none;
+      background: var(--bg);
+    }
+    .table-controls input:focus { border-color: var(--primary); }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .data-table th {
+      background: var(--primary);
+      color: #fff;
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .data-table th:first-child { border-radius: 8px 0 0 0; }
+    .data-table th:last-child { border-radius: 0 8px 0 0; }
+    .data-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    .data-table tr:hover td { background: var(--primary-light); }
+    .data-table tr:last-child td { border-bottom: none; }
+    .badge-val {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.78rem;
+    }
+    .badge-high { background: #fff5f5; color: var(--danger); }
+    .badge-med { background: var(--secondary-light); color: #7a5000; }
+    .badge-low { background: var(--primary-light); color: var(--primary-dark); }
+    .pagination {
+      display: flex; justify-content: flex-end; align-items: center;
+      gap: 8px; margin-top: 14px;
+    }
+    .pagination button {
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text);
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .pagination button:hover, .pagination button.active {
+      background: var(--primary); color: #fff; border-color: var(--primary);
+    }
+    .pagination span { font-size: 0.8rem; color: var(--text-light); }
+
+    /* ─── ALERT BANNER ─── */
+    .alert {
+      background: var(--secondary-light);
+      border: 1px solid var(--secondary);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 22px;
+      font-size: 0.84rem;
+      display: flex; gap: 10px; align-items: flex-start;
+    }
+    .alert .icon { font-size: 1.1rem; flex-shrink: 0; }
+
+    /* ─── FOOTER ─── */
+    footer {
+      text-align: center;
+      padding: 22px;
+      font-size: 0.76rem;
+      color: var(--text-light);
+      border-top: 1px solid var(--border);
+      margin-top: 10px;
+    }
+    footer strong { color: var(--primary); }
+
+    @media (max-width: 768px) {
+      main { padding: 16px; }
+      .charts-grid { grid-template-columns: 1fr; }
+      .chart-wide { grid-column: 1; }
+      header { padding: 20px; }
+      .tabs { padding: 0 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-logo">📊</div>
+  <div class="header-text">
+    <h1>Taux de Chômage au Maroc</h1>
+    <p>ENCG Settat — Université Hassan 1er &nbsp;|&nbsp; Analyse Socio-Économique</p>
+    <div class="header-date">Données HCP · 2006T1 – 2025T3 · 79 trimestres</div>
+  </div>
+  <div class="header-badge">🇲🇦 Données HCP</div>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="showTab('vue-generale')">🏠 Vue Générale</button>
+  <button class="tab" onclick="showTab('milieu')">🏙️ Milieu</button>
+  <button class="tab" onclick="showTab('sexe')">⚤ Sexe</button>
+  <button class="tab" onclick="showTab('age')">👥 Tranche d'Âge</button>
+  <button class="tab" onclick="showTab('diplome')">🎓 Diplôme</button>
+  <button class="tab" onclick="showTab('donnees')">📋 Données</button>
+</div>
+
+<main>
+
+<!-- ═══════════════════════════════════ TAB: VUE GÉNÉRALE ═══════════════════════════════════ -->
+<div id="vue-generale" class="tab-content active">
+
+  <div class="alert">
+    <span class="icon">💡</span>
+    <div>
+      <strong>Dernier trimestre disponible : 2025T3</strong> — Le taux de chômage national s'établit à <strong>13,1%</strong>, en baisse de 0,5 point par rapport à la même période de l'année précédente (2024T3 : 13,6%). Le chômage des jeunes (15–24 ans) reste le défi majeur avec <strong>38,4%</strong>.
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-label">Taux National (2025T3)</div>
+      <div class="kpi-value">13,1<span>%</span></div>
+      <div class="kpi-sub down">▼ -0,5 pt vs 2024T3</div>
+    </div>
+    <div class="kpi-card gold">
+      <div class="kpi-icon">🏙️</div>
+      <div class="kpi-label">Taux Urbain</div>
+      <div class="kpi-value">16,3<span>%</span></div>
+      <div class="kpi-sub">Rural : 6,9%</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-icon">👩</div>
+      <div class="kpi-label">Taux Féminin</div>
+      <div class="kpi-value">21,6<span>%</span></div>
+      <div class="kpi-sub up">▲ +11 pts vs hommes (10,6%)</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-icon">🎓</div>
+      <div class="kpi-label">Diplômés Sup.</div>
+      <div class="kpi-value">25,7<span>%</span></div>
+      <div class="kpi-sub up">↑ Paradoxe éducatif</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-icon">🧑</div>
+      <div class="kpi-label">Chômage Jeunes (15–24)</div>
+      <div class="kpi-value">38,4<span>%</span></div>
+      <div class="kpi-sub up">↑ Priorité nationale</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📉</div>
+      <div class="kpi-label">Minimum historique</div>
+      <div class="kpi-value">7,8<span>%</span></div>
+      <div class="kpi-sub">2006T2 — Meilleure performance</div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card chart-wide">
+      <h3>Évolution du Taux de Chômage National — 20 derniers trimestres</h3>
+      <p>Taux ensemble (%) · 2020T4 → 2025T3</p>
+      <div class="chart-wrapper-tall">
+        <canvas id="chartEvolution"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Comparaison Milieu : Urbain vs Rural</h3>
+      <p>Dernier trimestre disponible (2025T3)</p>
+      <div class="chart-wrapper">
+        <canvas id="chartMilieuDonut"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Profil du Chômage — 2025T3</h3>
+      <p>Taux par catégorie (%)</p>
+      <div class="chart-wrapper">
+        <canvas id="chartRadar"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ TAB: MILIEU ═══════════════════════════════════ -->
+<div id="milieu" class="tab-content">
+  <div class="kpi-grid">
+    <div class="kpi-card gold">
+      <div class="kpi-icon">🏙️</div>
+      <div class="kpi-label">Urbain (2025T3)</div>
+      <div class="kpi-value">16,3<span>%</span></div>
+      <div class="kpi-sub down">▼ vs 17,0% (2024T3)</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">🌾</div>
+      <div class="kpi-label">Rural (2025T3)</div>
+      <div class="kpi-value">6,9<span>%</span></div>
+      <div class="kpi-sub down">▼ vs 7,4% (2024T3)</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-icon">📐</div>
+      <div class="kpi-label">Écart Urbain–Rural</div>
+      <div class="kpi-value">9,4<span> pts</span></div>
+      <div class="kpi-sub up">↑ Fracture territoriale persistante</div>
+    </div>
+  </div>
+  <div class="charts-grid">
+    <div class="chart-card chart-wide">
+      <h3>Évolution Taux de Chômage : Urbain vs Rural vs Ensemble</h3>
+      <p>20 derniers trimestres (%)</p>
+      <div class="chart-wrapper-tall">
+        <canvas id="chartMilieuLine"></canvas>
+      </div>
+    </div>
+    <div class="chart-card chart-wide">
+      <h3>Écart Urbain–Rural par trimestre</h3>
+      <p>Différence en points de pourcentage</p>
+      <div class="chart-wrapper">
+        <canvas id="chartEcart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ TAB: SEXE ═══════════════════════════════════ -->
+<div id="sexe" class="tab-content">
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon">👨</div>
+      <div class="kpi-label">Masculin (2025T3)</div>
+      <div class="kpi-value">10,6<span>%</span></div>
+      <div class="kpi-sub down">▼ vs 11,6% (2024T3)</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-icon">👩</div>
+      <div class="kpi-label">Féminin (2025T3)</div>
+      <div class="kpi-value">21,6<span>%</span></div>
+      <div class="kpi-sub up">▲ vs 20,8% (2024T3)</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-icon">⚤</div>
+      <div class="kpi-label">Écart H–F</div>
+      <div class="kpi-value">11,0<span> pts</span></div>
+      <div class="kpi-sub up">↑ Inégalité de genre majeure</div>
+    </div>
+  </div>
+  <div class="charts-grid">
+    <div class="chart-card chart-wide">
+      <h3>Évolution Taux de Chômage : Masculin vs Féminin</h3>
+      <p>20 derniers trimestres (%)</p>
+      <div class="chart-wrapper-tall">
+        <canvas id="chartSexeLine"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Répartition par Sexe (2025T3)</h3>
+      <p>Taux de chômage comparé</p>
+      <div class="chart-wrapper">
+        <canvas id="chartSexeBar"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Écart de Genre (H–F) par trimestre</h3>
+      <p>En points de pourcentage</p>
+      <div class="chart-wrapper">
+        <canvas id="chartGenreEcart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ TAB: ÂGE ═══════════════════════════════════ -->
+<div id="age" class="tab-content">
+  <div class="kpi-grid">
+    <div class="kpi-card red">
+      <div class="kpi-icon">🧑</div>
+      <div class="kpi-label">15–24 ans (2025T3)</div>
+      <div class="kpi-value">38,4<span>%</span></div>
+      <div class="kpi-sub up">↑ Chômage des jeunes critique</div>
+    </div>
+    <div class="kpi-card gold">
+      <div class="kpi-icon">👔</div>
+      <div class="kpi-label">25–34 ans</div>
+      <div class="kpi-value">20,8<span>%</span></div>
+      <div class="kpi-sub">Marché du travail difficile</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">🧑‍💼</div>
+      <div class="kpi-label">35–44 ans</div>
+      <div class="kpi-value">6,9<span>%</span></div>
+      <div class="kpi-sub down">Tranche la plus stable</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">👴</div>
+      <div class="kpi-label">45 ans et plus</div>
+      <div class="kpi-value">3,6<span>%</span></div>
+      <div class="kpi-sub down">Taux le plus bas</div>
+    </div>
+  </div>
+  <div class="charts-grid">
+    <div class="chart-card chart-wide">
+      <h3>Évolution du Chômage par Tranche d'Âge</h3>
+      <p>20 derniers trimestres (%)</p>
+      <div class="chart-wrapper-tall">
+        <canvas id="chartAgeLine"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Répartition par Âge (2025T3)</h3>
+      <p>Taux de chômage par tranche</p>
+      <div class="chart-wrapper">
+        <canvas id="chartAgeBar"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Structure du Chômage par Âge</h3>
+      <p>Part relative de chaque tranche</p>
+      <div class="chart-wrapper">
+        <canvas id="chartAgeDonut"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ TAB: DIPLÔME ═══════════════════════════════════ -->
+<div id="diplome" class="tab-content">
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon">📚</div>
+      <div class="kpi-label">Sans Diplôme (2025T3)</div>
+      <div class="kpi-value">4,7<span>%</span></div>
+      <div class="kpi-sub down">Taux le plus bas</div>
+    </div>
+    <div class="kpi-card gold">
+      <div class="kpi-icon">📜</div>
+      <div class="kpi-label">Niveau Moyen</div>
+      <div class="kpi-value">13,8<span>%</span></div>
+      <div class="kpi-sub">Niveau intermédiaire</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-icon">🎓</div>
+      <div class="kpi-label">Niveau Supérieur</div>
+      <div class="kpi-value">25,7<span>%</span></div>
+      <div class="kpi-sub up">↑ Paradoxe diplôme–emploi</div>
+    </div>
+  </div>
+  <div class="alert">
+    <span class="icon">⚠️</span>
+    <div>
+      <strong>Paradoxe de l'éducation :</strong> Au Maroc, les diplômés du supérieur affichent un taux de chômage <strong>5,5 fois plus élevé</strong> que les non-diplômés (25,7% vs 4,7%). Ce phénomène structurel reflète un décalage entre l'offre de formation et les besoins du marché de l'emploi.
+    </div>
+  </div>
+  <div class="charts-grid">
+    <div class="chart-card chart-wide">
+      <h3>Évolution du Chômage par Niveau de Diplôme</h3>
+      <p>20 derniers trimestres (%)</p>
+      <div class="chart-wrapper-tall">
+        <canvas id="chartDiplomeLine"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Comparaison par Diplôme (2025T3)</h3>
+      <p>Taux de chômage selon le niveau d'études</p>
+      <div class="chart-wrapper">
+        <canvas id="chartDiplomeBar"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Répartition (Donut)</h3>
+      <p>Structure relative des taux</p>
+      <div class="chart-wrapper">
+        <canvas id="chartDiplomeDonut"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ TAB: DONNÉES ═══════════════════════════════════ -->
+<div id="donnees" class="tab-content">
+  <div class="table-card">
+    <div class="table-header">
+      <div>
+        <h3>📋 Données Complètes — 20 derniers trimestres</h3>
+        <p style="font-size:0.78rem;color:var(--text-light);margin-top:4px">Tous les indicateurs par trimestre</p>
+      </div>
+      <div class="table-controls">
+        <input type="text" id="tableSearch" placeholder="🔍 Rechercher un trimestre..." oninput="filterTable()">
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="data-table" id="dataTable">
+        <thead>
+          <tr>
+            <th>Trimestre</th>
+            <th>Ensemble</th>
+            <th>Urbain</th>
+            <th>Rural</th>
+            <th>Masculin</th>
+            <th>Féminin</th>
+            <th>15–24 ans</th>
+            <th>25–34 ans</th>
+            <th>Sans Dipl.</th>
+            <th>Niv. Sup.</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  Dashboard généré par <strong>ENCG Settat</strong> — Université Hassan 1er &nbsp;|&nbsp;
+  Source des données : <strong>Haut-Commissariat au Plan (HCP) du Maroc</strong> &nbsp;|&nbsp;
+  Période : 2006T1 – 2025T3 &nbsp;|&nbsp; Généré le <strong id="genDate"></strong>
+</footer>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+const D = {"trimestres":["2020T4","2021T1","2021T2","2021T3","2021T4","2022T1","2022T2","2022T3","2022T4","2023T1","2023T2","2023T3","2023T4","2024T1","2024T2","2024T3","2024T4","2025T1","2025T2","2025T3"],"ensemble":[12.2,12.5,12.8,11.8,11.9,12.1,11.2,11.4,12.9,12.9,12.4,13.5,13.3,13.7,13.1,13.6,12.9,13.3,12.8,13.1],"urbain":[16.3,17.1,18.2,16.0,16.5,16.3,15.5,15.0,16.6,17.1,16.3,17.0,16.9,17.6,16.7,17.0,16.5,16.6,16.4,16.3],"rural":[5.9,5.3,4.8,5.2,4.5,5.1,4.2,5.2,6.6,5.7,5.7,7.0,7.0,6.8,6.7,7.4,6.2,7.3,6.2,6.9],"masculin":[10.7,10.9,11.9,10.4,10.4,10.5,9.9,9.5,11.2,11.5,11.0,11.7,11.9,12.0,11.7,11.6,11.1,11.5,10.8,10.6],"feminin":[17.7,17.5,15.9,16.5,17.3,17.3,15.1,17.8,18.8,18.1,17.0,19.8,18.6,20.1,17.7,20.8,19.4,19.9,19.9,21.6],"age1524":[32.6,32.5,30.8,31.0,32.7,33.4,30.2,31.7,35.7,35.3,33.6,38.2,36.5,35.9,36.1,39.5,35.7,37.7,35.8,38.4],"age2534":[18.7,19.6,20.9,18.8,19.1,19.2,18.7,18.4,20.6,20.9,19.8,20.9,20.9,22.0,21.4,20.9,20.1,21.2,21.9,20.8],"sdiplome":[5.1,5.0,5.0,4.4,3.7,4.6,3.6,4.1,4.6,4.9,4.5,5.5,4.9,5.5,5.3,5.5,4.6,5.2,4.6,4.7],"nsup":[26.2,26.2,25.3,25.7,26.8,26.7,23.9,25.5,27.6,25.8,25.0,26.2,26.8,25.7,25.0,26.2,25.9,24.4,24.6,25.7]};
+
+// ─── COLORS ─────────────────────────────────────────────────────────────────
+const GREEN   = '#006633';
+const GOLD    = '#D4A017';
+const RED     = '#e53e3e';
+const BLUE    = '#3182ce';
+const ORANGE  = '#dd6b20';
+const PURPLE  = '#805ad5';
+const TEAL    = '#2c7a7b';
+
+const gridOpts = {
+  color: 'rgba(0,102,51,0.08)',
+  borderDash: [4, 4]
+};
+const tooltipStyle = {
+  backgroundColor: '#1a2e22',
+  titleColor: '#D4A017',
+  bodyColor: '#fff',
+  padding: 10,
+  cornerRadius: 8
+};
+
+// ─── TAB SWITCHING ───────────────────────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ─── CHART HELPERS ───────────────────────────────────────────────────────────
+function lineDataset(label, data, color, fill=false) {
+  return {
+    label, data,
+    borderColor: color,
+    backgroundColor: fill ? color + '22' : 'transparent',
+    borderWidth: 2.5,
+    pointRadius: 3,
+    pointHoverRadius: 6,
+    tension: 0.35,
+    fill
+  };
+}
+
+function makeLineChart(id, labels, datasets) {
+  return new Chart(document.getElementById(id), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { boxWidth: 14, font: { size: 11 } } }, tooltip: tooltipStyle },
+      scales: {
+        x: { grid: gridOpts, ticks: { maxRotation: 45, font: { size: 10 } } },
+        y: { grid: gridOpts, ticks: { callback: v => v + '%', font: { size: 10 } }, suggestedMin: 0 }
+      }
+    }
+  });
+}
+
+// ─── CHART: ÉVOLUTION NATIONALE ─────────────────────────────────────────────
+makeLineChart('chartEvolution', D.trimestres, [
+  lineDataset('Taux National', D.ensemble, GREEN, true)
+]);
+
+// ─── CHART: MILIEU DONUT ─────────────────────────────────────────────────────
+new Chart(document.getElementById('chartMilieuDonut'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Urbain (16,3%)', 'Rural (6,9%)', 'National (13,1%)'],
+    datasets: [{ data: [16.3, 6.9, 13.1], backgroundColor: [GREEN, GOLD, BLUE], borderWidth: 2 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } }, tooltip: tooltipStyle }
+  }
+});
+
+// ─── CHART: RADAR ────────────────────────────────────────────────────────────
+new Chart(document.getElementById('chartRadar'), {
+  type: 'radar',
+  data: {
+    labels: ['National', 'Urbain', 'Rural', 'Féminin', 'Jeunes\n(15–24)', 'Diplômés\nSup.'],
+    datasets: [{
+      label: '2025T3 (%)',
+      data: [13.1, 16.3, 6.9, 21.6, 38.4, 25.7],
+      borderColor: GREEN,
+      backgroundColor: GREEN + '33',
+      pointBackgroundColor: GOLD,
+      borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top' }, tooltip: tooltipStyle },
+    scales: { r: { ticks: { stepSize: 10, font: { size: 9 } }, grid: { color: 'rgba(0,102,51,0.12)' } } }
+  }
+});
+
+// ─── CHART: MILIEU LINE ──────────────────────────────────────────────────────
+makeLineChart('chartMilieuLine', D.trimestres, [
+  lineDataset('Urbain', D.urbain, GREEN),
+  lineDataset('Rural', D.rural, GOLD),
+  lineDataset('Ensemble', D.ensemble, BLUE, true)
+]);
+
+// ─── CHART: ÉCART URBAIN–RURAL ───────────────────────────────────────────────
+new Chart(document.getElementById('chartEcart'), {
+  type: 'bar',
+  data: {
+    labels: D.trimestres,
+    datasets: [{
+      label: 'Écart Urbain–Rural (pts)',
+      data: D.trimestres.map((_, i) => +(D.urbain[i] - D.rural[i]).toFixed(1)),
+      backgroundColor: GREEN + 'cc',
+      borderColor: GREEN,
+      borderWidth: 1,
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top' }, tooltip: tooltipStyle },
+    scales: {
+      x: { grid: gridOpts, ticks: { maxRotation: 45, font: { size: 10 } } },
+      y: { grid: gridOpts, ticks: { callback: v => v + ' pts', font: { size: 10 } } }
+    }
+  }
+});
+
+// ─── CHART: SEXE LINE ────────────────────────────────────────────────────────
+makeLineChart('chartSexeLine', D.trimestres, [
+  lineDataset('Masculin', D.masculin, BLUE),
+  lineDataset('Féminin', D.feminin, RED),
+  lineDataset('Ensemble', D.ensemble, GREEN)
+]);
+
+// ─── CHART: SEXE BAR ─────────────────────────────────────────────────────────
+new Chart(document.getElementById('chartSexeBar'), {
+  type: 'bar',
+  data: {
+    labels: ['Masculin', 'Féminin', 'Ensemble'],
+    datasets: [{
+      label: 'Taux 2025T3 (%)',
+      data: [10.6, 21.6, 13.1],
+      backgroundColor: [BLUE + 'cc', RED + 'cc', GREEN + 'cc'],
+      borderColor: [BLUE, RED, GREEN],
+      borderWidth: 2,
+      borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: tooltipStyle },
+    scales: {
+      x: { grid: { display: false } },
+      y: { grid: gridOpts, ticks: { callback: v => v + '%' }, suggestedMin: 0, suggestedMax: 25 }
+    }
+  }
+});
+
+// ─── CHART: GENRE ÉCART ──────────────────────────────────────────────────────
+new Chart(document.getElementById('chartGenreEcart'), {
+  type: 'bar',
+  data: {
+    labels: D.trimestres,
+    datasets: [{
+      label: 'Écart F–M (pts)',
+      data: D.trimestres.map((_, i) => +(D.feminin[i] - D.masculin[i]).toFixed(1)),
+      backgroundColor: RED + 'bb',
+      borderColor: RED,
+      borderWidth: 1,
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top' }, tooltip: tooltipStyle },
+    scales: {
+      x: { grid: gridOpts, ticks: { maxRotation: 45, font: { size: 10 } } },
+      y: { grid: gridOpts, ticks: { callback: v => v + ' pts' } }
+    }
+  }
+});
+
+// ─── CHART: ÂGE LINE ─────────────────────────────────────────────────────────
+makeLineChart('chartAgeLine', D.trimestres, [
+  lineDataset('15–24 ans', D.age1524, RED),
+  lineDataset('25–34 ans', D.age2534, ORANGE),
+  lineDataset('Ensemble', D.ensemble, GREEN)
+]);
+
+// ─── CHART: ÂGE BAR ──────────────────────────────────────────────────────────
+new Chart(document.getElementById('chartAgeBar'), {
+  type: 'bar',
+  data: {
+    labels: ['15–24 ans', '25–34 ans', '35–44 ans', '45 ans+'],
+    datasets: [{
+      label: 'Taux 2025T3 (%)',
+      data: [38.4, 20.8, 6.9, 3.6],
+      backgroundColor: [RED+'cc', ORANGE+'cc', GOLD+'cc', GREEN+'cc'],
+      borderColor: [RED, ORANGE, GOLD, GREEN],
+      borderWidth: 2, borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: tooltipStyle },
+    scales: {
+      x: { grid: { display: false } },
+      y: { grid: gridOpts, ticks: { callback: v => v + '%' } }
+    }
+  }
+});
+
+// ─── CHART: ÂGE DONUT ────────────────────────────────────────────────────────
+new Chart(document.getElementById('chartAgeDonut'), {
+  type: 'doughnut',
+  data: {
+    labels: ['15–24 ans', '25–34 ans', '35–44 ans', '45 ans+'],
+    datasets: [{
+      data: [38.4, 20.8, 6.9, 3.6],
+      backgroundColor: [RED, ORANGE, GOLD, GREEN],
+      borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } }, tooltip: tooltipStyle }
+  }
+});
+
+// ─── CHART: DIPLÔME LINE ─────────────────────────────────────────────────────
+const nmoy = [25.3,26.2,25.3,25.7,26.8,26.7,23.9,25.5,27.6,25.8,25.0,26.2,26.8,25.7,25.0,26.2,25.9,24.4,24.6,25.7]; // approx from data
+makeLineChart('chartDiplomeLine', D.trimestres, [
+  lineDataset('Sans Diplôme', D.sdiplome, TEAL),
+  lineDataset('Niveau Supérieur', D.nsup, RED),
+  lineDataset('Ensemble', D.ensemble, GREEN)
+]);
+
+// ─── CHART: DIPLÔME BAR ──────────────────────────────────────────────────────
+new Chart(document.getElementById('chartDiplomeBar'), {
+  type: 'bar',
+  data: {
+    labels: ['Sans Diplôme', 'Niveau Moyen', 'Niveau Supérieur'],
+    datasets: [{
+      label: 'Taux 2025T3 (%)',
+      data: [4.7, 13.8, 25.7],
+      backgroundColor: [TEAL+'cc', GOLD+'cc', RED+'cc'],
+      borderColor: [TEAL, GOLD, RED],
+      borderWidth: 2, borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: tooltipStyle },
+    scales: {
+      x: { grid: { display: false } },
+      y: { grid: gridOpts, ticks: { callback: v => v + '%' } }
+    }
+  }
+});
+
+// ─── CHART: DIPLÔME DONUT ────────────────────────────────────────────────────
+new Chart(document.getElementById('chartDiplomeDonut'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Sans Diplôme (4,7%)', 'Niveau Moyen (13,8%)', 'Niveau Supérieur (25,7%)'],
+    datasets: [{
+      data: [4.7, 13.8, 25.7],
+      backgroundColor: [TEAL, GOLD, RED],
+      borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } }, tooltip: tooltipStyle }
+  }
+});
+
+// ─── TABLE ───────────────────────────────────────────────────────────────────
+const PAGE_SIZE = 10;
+let currentPage = 1;
+let filteredData = [...Array(D.trimestres.length).keys()].reverse();
+
+function getBadge(val, type) {
+  if (type === 'ensemble') {
+    if (val >= 13) return `<span class="badge-val badge-high">${val}%</span>`;
+    if (val >= 11) return `<span class="badge-val badge-med">${val}%</span>`;
+    return `<span class="badge-val badge-low">${val}%</span>`;
+  }
+  return val + '%';
+}
+
+function renderTable() {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageData = filteredData.slice(start, start + PAGE_SIZE);
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = pageData.map(i => `
+    <tr>
+      <td><strong>${D.trimestres[i]}</strong></td>
+      <td>${getBadge(D.ensemble[i], 'ensemble')}</td>
+      <td>${D.urbain[i]}%</td>
+      <td>${D.rural[i]}%</td>
+      <td>${D.masculin[i]}%</td>
+      <td>${D.feminin[i]}%</td>
+      <td><span class="badge-val badge-high">${D.age1524[i]}%</span></td>
+      <td>${D.age2534[i]}%</td>
+      <td>${D.sdiplome[i]}%</td>
+      <td><span class="badge-val badge-high">${D.nsup[i]}%</span></td>
+    </tr>
+  `).join('');
+  renderPagination();
+}
+
+function renderPagination() {
+  const total = Math.ceil(filteredData.length / PAGE_SIZE);
+  const pag = document.getElementById('pagination');
+  pag.innerHTML = '';
+  const span = document.createElement('span');
+  span.textContent = `Page ${currentPage} / ${total}`;
+  pag.appendChild(span);
+  ['‹', '›'].forEach((arrow, idx) => {
+    const btn = document.createElement('button');
+    btn.textContent = arrow;
+    btn.onclick = () => {
+      if (idx === 0 && currentPage > 1) { currentPage--; renderTable(); }
+      if (idx === 1 && currentPage < total) { currentPage++; renderTable(); }
+    };
+    pag.appendChild(btn);
+  });
+}
+
+function filterTable() {
+  const q = document.getElementById('tableSearch').value.toLowerCase();
+  filteredData = [...Array(D.trimestres.length).keys()]
+    .reverse()
+    .filter(i => D.trimestres[i].toLowerCase().includes(q));
+  currentPage = 1;
+  renderTable();
+}
+
+renderTable();
+
+// ─── DATE ────────────────────────────────────────────────────────────────────
+document.getElementById('genDate').textContent = new Date().toLocaleDateString('fr-FR');
+</script>
+</body>
+</html>
