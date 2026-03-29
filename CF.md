@@ -1,4 +1,4 @@
-<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px"/>
+<img src="[https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px](https://github.com/yahyachaibyc-coder/Taux-de-chomage-au-maroc/blob/main/DSC_0038%20copy.jpg)"/>
 
 # genere un fichier compte erendu au format md relatif au fichier excel fourni
 
